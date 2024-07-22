@@ -15,8 +15,22 @@ _start:
 start:
     jmp 0x7c0:step2
 
+; responsible for handling interrupt zero 
+; ( i am not sure but i think this should handle division by zero)
+handle_zero:
+    mov ah, 0eh
+    mov al, 'A'
+    mov bx, 0x00
+    int 0x10
+    iret
 
-
+handle_one:
+    mov ah, 0eh
+    mov al, 'Z'
+    mov bx, 0x00
+    int 0x10
+    iret
+    
 
 step2:
 
@@ -38,29 +52,41 @@ step2:
     ; Enables interrupts
     sti
 
-    ; we're gonna read from the boot.bin where we dd'd message.txt into
-    mov ah, 2 ; read Sector Command
-    mov al, 1 ; one sector to read
-    mov ch, 0 ; cilinder low eight bits
-    mov cl, 2 ; read sector 2, starts from 1
-    mov dh, 0 ; Head number
-    mov bx, buffer 
-    int 0x13 ; int/command to read from 'hard Disk'
-    jc error
+    ; using ss so it will use 0x00 as it is in interrupt tables
+    ; we could have used 
+    ; mov ds,0x00
+    ; and then
+    ; mov word[0x00],handle_zero, but below is just easier and cleaner
 
-    mov si,buffer
+    mov word[ss:0x00],handle_zero
+    mov word[ss:0x02], 0x7c0
+
+    ; this is basically calling 0x00
+    ; int 0
+    ; we can call it like this too
+    ; mov ax,0
+    ; div ax, which divides whatever is on the right side with ax, 
+    ;so it's ax\ax
+    ;which is divided with zero, so int 0 is called
+
+    ;for int 1'
+    ; int 1 starts at 0x04 that's why it's there
+    ; https://wiki.osdev.org/Exceptions more here
+    mov word[ss:0x04], handle_one
+    mov word[ss:0x06], 0x7c0
+
+    int 1
+
+
+    mov si, message 
     call print
 
-    jmp $
-error:
-    mov si, error_message
-    call print
     ; make sure it keeps jumping to itself
     jmp $
 
 print:
     mov bx, 0
-
+    ; Load the character the si register is pointing to and it will load it to a register
 .loop:
     lodsb
     cmp al,0
@@ -82,13 +108,14 @@ print_char:
     int 0x10
     ret
 
-error_message: db 'Failed to load Sector',0
+message: db 'Hello World!', 0
+
+
 
 ;  we need to fill at least 510 bytes of data so 511 and 512 can be read from the bios
 times 510-($ - $$) db 0
 ; 55AA actually, it gets flipped
 dw 0xAA55
 
-; it's in the end so it doesn't messup anything 
-;that we have written before that
-buffer: 
+
+
