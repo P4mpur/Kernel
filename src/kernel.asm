@@ -18,3 +18,6 @@ _start:
     out 0x92,al
 
     jmp $
+    
+; solvin alignment issues caused by kernel.asm
+times 512-($ - $$) db 0
