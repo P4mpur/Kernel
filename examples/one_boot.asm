@@ -1,4 +1,4 @@
-; Address to start from 0x7c00
+    ; Address to start from 0x7c00
 ORG  0
 
 ;  saying we are using 16 bit code
